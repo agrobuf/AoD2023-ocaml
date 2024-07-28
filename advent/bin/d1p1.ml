@@ -1,13 +1,3 @@
-(*
-   The document contains lines of text.
-
-   On each line, the value can be found by combining the *first digit* and *last digit* (in that order) to for
-   a single *two-digit number*.
-*)
-
-(* Temp code to make implementation speedier *)
-[@@@warnerror "-unused-value-declaration"]
-
 let filename = "day1_input.txt"
 
 let read_line fd =
@@ -15,23 +5,7 @@ let read_line fd =
   | _ -> None
 ;;
 
-let is_digit char =
-  match char with
-  | '0' .. '9' -> true
-  | _ -> false
-;;
-
-let explode_string str =
-  let rec explode str_index lc =
-    match str_index >= 0 with
-    | false -> lc
-    | true -> explode (str_index - 1) (str.[str_index] :: lc)
-  in
-  explode (String.length str - 1) []
-;;
-
-let char_digit_to_string c =
-  match c with
+let char_to_string_digit = function
   | '0' -> "0"
   | '1' -> "1"
   | '2' -> "2"
@@ -42,36 +16,60 @@ let char_digit_to_string c =
   | '7' -> "7"
   | '8' -> "8"
   | '9' -> "9"
-  | _ -> ""
+  | _ -> assert false
 ;;
 
-let pull_digits ch_list =
-  let rec search ch_list' first last =
-    match ch_list' with
-    | [] ->
-      (match first, last with
-       | None, None -> None
-       | Some f, None -> Some (char_digit_to_string f ^ char_digit_to_string f)
-       | None, Some l -> Some (char_digit_to_string l ^ char_digit_to_string l)
-       | Some f, Some l -> Some (char_digit_to_string f ^ char_digit_to_string l))
-    | h :: t ->
-      (match is_digit h with
-       | false -> search t first last
-       | true -> if first = None then search t (Some h) last else search t first (Some h))
-  in
-  search ch_list None None
+let is_digit ch =
+  match ch with
+  | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' -> true
+  | _ -> false
 ;;
 
-let () =
-  let fd = open_in filename in
-  let rec process_file fd' sum =
-    match read_line fd' with
-    | None -> Printf.printf "Sum: %d" sum
-    | Some line ->
-      let fl = pull_digits @@ explode_string line in
-      (match fl with
-       | None -> process_file fd' sum
-       | Some n -> process_file fd' (sum + int_of_string n))
+let explode_string str =
+  let rec go str' idx lst =
+    match 0 <= idx with
+    | false -> lst
+    | true -> go str' (idx - 1) (str'.[idx] :: lst)
   in
-  process_file fd 0
+  go str (String.length str - 1) []
 ;;
+
+let implode_str_list chlst =
+  let rec go chlst' acc =
+    match chlst' with
+    | [] -> acc
+    | h :: t -> go t (acc ^ h)
+  in
+  go chlst ""
+;;
+
+let extract chlst =
+  let rec go lst' =
+    match lst' with
+    | [] -> []
+    | [ x ] -> [ x ]
+    | _ :: t -> go t
+  in
+  [ List.hd chlst ] @ go chlst
+;;
+
+let process_line str =
+  let lst = explode_string str |> List.filter is_digit in
+  match lst with
+  | [] -> 0
+  | _ -> extract lst |> List.map char_to_string_digit |> implode_str_list |> int_of_string
+;;
+
+let process_file fd =
+  let sum = 0 in
+  let rec go sum' =
+    match read_line fd with
+    | None -> sum'
+    | Some str ->
+      let num = process_line str in
+      go (sum' + num)
+  in
+  go sum
+;;
+
+let () = open_in filename |> process_file |> print_int
